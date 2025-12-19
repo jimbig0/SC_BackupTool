@@ -97,7 +97,7 @@ set "BACKUP_ROOT=%USERPROFILE%\Documents\SC_Config_Backups"
 set "BACKUP_DIR=!BACKUP_ROOT!\!DATESTAMP!_!BRANCH_VERSION!"
 
 if not exist "!BACKUP_DIR!" (
-    mkdir "!BACKUP_DIR!" /p
+    mkdir "!BACKUP_DIR!"
 )
 goto :eof
 

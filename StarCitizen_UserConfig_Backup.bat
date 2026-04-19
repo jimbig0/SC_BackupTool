@@ -23,12 +23,14 @@ call :CreateBackupDirectory
 :: MAIN MENU AND OPERATION DISPATCH
 :: ============================================================================
 call :DisplayMainMenu
-set /p choice=Enter 1 or 2: 
+set /p choice=Enter 1, 2, or 3: 
 
 if "%choice%"=="1" (
     call :PerformBackup
 ) else if "%choice%"=="2" (
     call :PerformRestore
+) else if "%choice%"=="3" (
+    call :CreateHOTFIXLink
 ) else (
     echo Invalid choice. Exiting.
     exit /b
@@ -110,6 +112,7 @@ echo =========================================
 echo What would you like to do?
 echo 1. Backup current LIVE configuration
 echo 2. Restore configuration
+echo 3. Create HOTFIX symbolic link to LIVE
 echo.
 goto :eof
 
@@ -400,3 +403,112 @@ if errorlevel 1 (
 )
 
 goto :eof
+
+:: Create a symbolic link from HOTFIX to LIVE folder
+:: Validates that HOTFIX doesn't already exist or is empty
+:: Creates the link in the Star Citizen installation directory
+:: Requires administrator privileges which are already verified at startup
+:CreateHOTFIXLink
+echo.
+echo Creating HOTFIX symbolic link...
+echo.
+
+:: Check if HOTFIX already exists
+if exist "%SC_BASE%\HOTFIX" (
+    echo HOTFIX folder detected. Checking if it is a symbolic link or directory...
+    
+    :: Try to remove it if it's a symbolic link
+    fsutil reparsepoint query "%SC_BASE%\HOTFIX" >nul 2>&1
+    if errorlevel 0 (
+        :: It's a symbolic link, check if we can safely remove it
+        echo HOTFIX is a symbolic link.
+        choice /c YN /m "Remove existing HOTFIX symbolic link and create a new one?"
+        if errorlevel 2 (
+            echo Operation cancelled.
+            pause
+            goto :eof
+        )
+        
+        :: Remove the existing symbolic link
+        rmdir "%SC_BASE%\HOTFIX" /S /Q
+        if errorlevel 1 (
+            echo Error: Failed to remove existing HOTFIX symbolic link.
+            pause
+            goto :eof
+        )
+    ) else (
+        :: It's a regular folder, check if empty
+        echo HOTFIX is a regular folder. Checking if it is empty...
+        
+        for /d %%F in ("%SC_BASE%\HOTFIX\*") do (
+            echo Error: HOTFIX folder is not empty. Contains subdirectories.
+            echo Please manually remove the HOTFIX folder or its contents.
+            pause
+            goto :eof
+        )
+        
+        for %%F in ("%SC_BASE%\HOTFIX\*") do (
+            echo Error: HOTFIX folder is not empty. Contains files.
+            echo Please manually remove the HOTFIX folder or its contents.
+            pause
+            goto :eof
+        )
+        
+        :: Folder is empty, ask permission to remove it
+        choice /c YN /m "Remove empty HOTFIX folder and create symbolic link?"
+        if errorlevel 2 (
+            echo Operation cancelled.
+            pause
+            goto :eof
+        )
+        
+        rmdir "%SC_BASE%\HOTFIX" /Q
+        if errorlevel 1 (
+            echo Error: Failed to remove empty HOTFIX folder.
+            pause
+            goto :eof
+        )
+    )
+) else (
+    echo HOTFIX folder does not exist. Ready to create symbolic link.
+    echo.
+)
+
+:: Verify LIVE folder exists before creating the link
+if not exist "%LIVE_BASE%" (
+    echo Error: LIVE folder not found at "%LIVE_BASE%"
+    echo Cannot create symbolic link without LIVE folder.
+    pause
+    goto :eof
+)
+
+:: Display confirmation before creating the link
+echo This will create a symbolic link:
+echo   Link name: %SC_BASE%\HOTFIX
+echo   Target:   %SC_BASE%\LIVE
+echo.
+choice /c YN /m "Do you want to proceed?"
+if errorlevel 2 (
+    echo Operation cancelled.
+    pause
+    goto :eof
+)
+
+:: Change to SC_BASE directory and create the symbolic link
+echo.
+echo Creating symbolic link...
+cd /d "%SC_BASE%"
+mklink /D HOTFIX LIVE
+
+if errorlevel 1 (
+    echo Error: Failed to create HOTFIX symbolic link.
+    echo Make sure you are running as administrator.
+    pause
+    goto :eof
+) else (
+    echo.
+    echo Successfully created HOTFIX symbolic link!
+    echo HOTFIX now points to LIVE folder.
+    pause
+    goto :eof
+)

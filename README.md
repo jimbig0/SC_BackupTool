@@ -1,6 +1,4 @@
-================================================================================
-                   STAR CITIZEN UTILITY - Backup & Restore Tool
-================================================================================
+STAR CITIZEN UTILITY - Backup & Restore Tool
 
 DESCRIPTION:
 StarCitizen_Utility.bat is a comprehensive backup and restore utility for Star

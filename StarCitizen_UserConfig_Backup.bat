@@ -22,18 +22,25 @@ call :CreateBackupDirectory
 :: ============================================================================
 :: MAIN MENU AND OPERATION DISPATCH
 :: ============================================================================
+:MainMenuLoop
 call :DisplayMainMenu
-set /p choice=Enter 1, 2, or 3: 
+set /p choice=Enter 1, 2, 3, or 4: 
 
 if "%choice%"=="1" (
     call :PerformBackup
+    goto :MainMenuLoop
 ) else if "%choice%"=="2" (
     call :PerformRestore
+    goto :MainMenuLoop
 ) else if "%choice%"=="3" (
     call :CreateHOTFIXLink
-) else (
-    echo Invalid choice. Exiting.
+    goto :MainMenuLoop
+) else if "%choice%"=="4" (
+    echo Exiting Star Citizen User Profile Config Manager.
     exit /b
+) else (
+    echo Invalid choice. Please enter 1, 2, 3, or 4.
+    goto :MainMenuLoop
 )
 
 exit /b
@@ -113,6 +120,7 @@ echo What would you like to do?
 echo 1. Backup current LIVE configuration
 echo 2. Restore configuration
 echo 3. Create HOTFIX symbolic link to LIVE
+echo 4. Exit
 echo.
 goto :eof
 
@@ -222,12 +230,25 @@ if %BACKUP_COUNT% equ 0 (
     echo.
     set /p BACKUP_CHOICE=Select backup by number: 
     
-    :: Validate user selection
-    if defined BACKUP_!BACKUP_CHOICE! (
-        set "BACKUP_ZIP=!BACKUP_!BACKUP_CHOICE!!"
-    ) else (
-        echo Invalid selection. Exiting.
+    :: Validate user selection is a number within range
+    if "!BACKUP_CHOICE!"=="" (
+        echo Invalid selection. Exiting restore.
         set "BACKUP_ZIP="
+        pause
+        goto :eof
+    )
+    
+    :: Use call to expand the dynamic variable name
+    for /L %%I in (1,1,!BACKUP_INDEX!) do (
+        if "!BACKUP_CHOICE!"=="%%I" (
+            set "BACKUP_ZIP=!BACKUP_%%I!"
+        )
+    )
+    
+    if not defined BACKUP_ZIP (
+        echo Invalid selection. Please enter a number between 1 and !BACKUP_INDEX!.
+        set "BACKUP_ZIP="
+        pause
         goto :eof
     )
 )
@@ -292,20 +313,24 @@ if "!LIVE_AVAILABLE!"=="0" if "!PTU_AVAILABLE!"=="0" if "!TECH_PREVIEW_AVAILABLE
 goto :eof
 goto :eof
 
-:: Display the restore menu with only available options
+:: Display the restore menu with fixed options for all three environments
 :DisplayRestoreMenu
 echo Which environment do you want to restore to?
+echo.
 if "!LIVE_AVAILABLE!"=="1" (
     echo 1. LIVE
-    set "MENU_CHOICE_1=LIVE"
+) else (
+    echo 1. LIVE (not installed)
 )
 if "!PTU_AVAILABLE!"=="1" (
     echo 2. PTU
-    set "MENU_CHOICE_2=PTU"
+) else (
+    echo 2. PTU (not installed)
 )
 if "!TECH_PREVIEW_AVAILABLE!"=="1" (
     echo 3. TECH-PREVIEW
-    set "MENU_CHOICE_3=TECH-PREVIEW"
+) else (
+    echo 3. TECH-PREVIEW (not installed)
 )
 echo.
 goto :eof
@@ -313,25 +338,28 @@ goto :eof
 :: Validate user selection and set the restore path to the appropriate configuration directory
 :ValidateAndSetRestorePath
 if "%envChoice%"=="1" (
-    if "!MENU_CHOICE_1!"=="" (
-        echo Invalid choice. Exiting.
+    if "!LIVE_AVAILABLE!"=="0" (
+        echo Error: LIVE environment is not installed. Cannot restore to unavailable environment.
+        set "RESTORE_PATH="
         goto :eof
     )
     set "RESTORE_PATH=!LIVE_CONFIG!"
 ) else if "%envChoice%"=="2" (
-    if "!MENU_CHOICE_2!"=="" (
-        echo Invalid choice. Exiting.
+    if "!PTU_AVAILABLE!"=="0" (
+        echo Error: PTU environment is not installed. Cannot restore to unavailable environment.
+        set "RESTORE_PATH="
         goto :eof
     )
     set "RESTORE_PATH=!PTU_CONFIG!"
 ) else if "%envChoice%"=="3" (
-    if "!MENU_CHOICE_3!"=="" (
-        echo Invalid choice. Exiting.
+    if "!TECH_PREVIEW_AVAILABLE!"=="0" (
+        echo Error: TECH-PREVIEW environment is not installed. Cannot restore to unavailable environment.
+        set "RESTORE_PATH="
         goto :eof
     )
     set "RESTORE_PATH=!TECH_PREVIEW_CONFIG!"
 ) else (
-    echo Invalid choice. Exiting.
+    echo Invalid choice. Please enter 1, 2, or 3.
     goto :eof
 )
 goto :eof

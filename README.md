@@ -1,3 +1,4 @@
+
 STAR CITIZEN UTILITY - Backup & Restore Tool
 
 DESCRIPTION:
@@ -9,12 +10,15 @@ configurations between game branches or safeguarding your settings.
 
 FEATURES:
   • Automatic backup of user profiles and control settings
-  • Restore functionality to recover previous configurations
+  • Restore functionality with backup selection and destination choice
   • Support for multiple Star Citizen branches (LIVE, PTU, TECH-PREVIEW)
+  • Fixed restore menu options: 1 (LIVE), 2 (PTU), 3 (TECH-PREVIEW)
   • Timestamped backups organized by date and game version
   • Automatic detection of installed Star Citizen branch versions
   • Organized backup directory structure for easy management
   • Create HOTFIX symbolic link to LIVE folder for alternative branch access
+  • Continuous menu loop - perform multiple operations without restarting
+  • Enhanced error handling with clear user feedback
 
 REQUIREMENTS:
   • Administrator privileges (required to access Star Citizen installation files)
@@ -39,14 +43,25 @@ SETUP INSTRUCTIONS:
    comfortable with its operations before granting administrator access.
 
 4. RUN THE UTILITY
-   Double-click the shortcut to launch the main menu with three options:
+   Double-click the shortcut to launch the main menu. After completing any operation,
+   you'll be returned to the main menu to perform additional actions.
+   
+   Main Menu Options:
    
    Option 1 - Backup Configuration
       Backs up your current LIVE configuration to a timestamped compressed file
       
    Option 2 - Restore Configuration
-      Restores a previous backup to your selected Star Citizen branch
-      (LIVE, PTU, or TECH-PREVIEW if available)
+      First, you'll select which backup to restore:
+      • Lists all available backups by date and version
+      • Automatically selects if only one backup exists
+      
+      Then, you'll select the restoration destination:
+      • 1. LIVE
+      • 2. PTU (if installed)
+      • 3. TECH-PREVIEW (if installed)
+      
+      Restores your selected backup to the chosen Star Citizen branch.
       
    Option 3 - Create HOTFIX Symbolic Link
       Creates a HOTFIX folder that links to the LIVE folder
@@ -61,6 +76,9 @@ SETUP INSTRUCTIONS:
       • Must run as administrator (already required)
       • LIVE folder must exist in Star Citizen installation
       • HOTFIX folder must not exist or must be empty
+      
+   Option 4 - Exit
+      Closes the utility and exits to desktop
 
 BACKUP LOCATION:
    Backups are automatically stored in:

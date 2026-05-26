@@ -24,7 +24,7 @@ call :CreateBackupDirectory
 :: ============================================================================
 :MainMenuLoop
 call :DisplayMainMenu
-set /p choice=Enter 1, 2, 3, or 4: 
+set /p choice=Enter 1, 2, 3, 4, or 5: 
 
 if "%choice%"=="1" (
     call :PerformBackup
@@ -36,10 +36,13 @@ if "%choice%"=="1" (
     call :CreateHOTFIXLink
     goto :MainMenuLoop
 ) else if "%choice%"=="4" (
+    call :PerformLanguagePackInstall
+    goto :MainMenuLoop
+) else if "%choice%"=="5" (
     echo Exiting Star Citizen User Profile Config Manager.
     exit /b
 ) else (
-    echo Invalid choice. Please enter 1, 2, 3, or 4.
+    echo Invalid choice. Please enter 1, 2, 3, 4, or 5.
     goto :MainMenuLoop
 )
 
@@ -120,7 +123,8 @@ echo What would you like to do?
 echo 1. Backup current LIVE configuration
 echo 2. Restore configuration
 echo 3. Create HOTFIX symbolic link to LIVE
-echo 4. Exit
+echo 4. Download and install StarStrings language pack
+echo 5. Exit
 echo.
 goto :eof
 
@@ -540,3 +544,102 @@ if errorlevel 1 (
     pause
     goto :eof
 )
+
+:: Download and install the StarStrings language pack from the latest GitHub release
+:PerformLanguagePackInstall
+echo.
+if not exist "%LIVE_BASE%" (
+    echo Error: LIVE folder not found at "%LIVE_BASE%"
+    echo Cannot install language pack without LIVE folder.
+    pause
+    goto :eof
+)
+
+call :DownloadLanguagePack
+if errorlevel 1 goto :eof
+
+call :ExtractLanguagePackZip
+if errorlevel 1 goto :eof
+
+call :InstallLanguagePackFiles
+call :CleanupLanguagePackTemp
+pause
+goto :eof
+
+:DownloadLanguagePack
+set "LANG_PACK_ZIP=%TEMP%\StarStrings_LanguagePack.zip"
+if exist "!LANG_PACK_ZIP!" del /Q "!LANG_PACK_ZIP!"
+
+echo Downloading latest StarStrings language pack from GitHub...
+PowerShell -NoProfile -Command "$release=Invoke-RestMethod -UseBasicParsing -Uri 'https://api.github.com/repos/MrKraken/StarStrings/releases/latest'; $asset=$release.assets | Where-Object { $_.name -match '\.zip$' } | Select-Object -First 1; if($null -eq $asset){Write-Error 'No zip asset found'; exit 1}; Invoke-WebRequest -Uri $asset.browser_download_url -OutFile '%TEMP%\\StarStrings_LanguagePack.zip' -UseBasicParsing"
+
+if errorlevel 1 (
+    echo Error: Failed to download language pack.
+    goto :eof
+)
+
+goto :eof
+
+:ExtractLanguagePackZip
+set "LANG_PACK_TEMP=%TEMP%\StarStrings_LanguagePack"
+if exist "!LANG_PACK_TEMP!" rmdir /S /Q "!LANG_PACK_TEMP!"
+mkdir "!LANG_PACK_TEMP!"
+
+echo Extracting language pack...
+PowerShell -NoProfile -Command "Add-Type -AssemblyName 'System.IO.Compression.FileSystem'; [System.IO.Compression.ZipFile]::ExtractToDirectory('%TEMP%\\StarStrings_LanguagePack.zip','%TEMP%\\StarStrings_LanguagePack')"
+
+if errorlevel 1 (
+    echo Error: Failed to extract language pack archive.
+    goto :eof
+)
+
+set "LANG_PACK_ROOT=!LANG_PACK_TEMP!"
+if not exist "!LANG_PACK_ROOT!\data" (
+    for /d %%D in ("!LANG_PACK_TEMP!\*") do (
+        if exist "%%~fD\data" set "LANG_PACK_ROOT=%%~fD"
+    )
+)
+
+if not exist "!LANG_PACK_ROOT!\data" (
+    echo Error: Extracted package does not contain a data folder.
+    goto :eof
+)
+
+goto :eof
+
+:InstallLanguagePackFiles
+if not exist "%LIVE_BASE%" (
+    echo Error: LIVE folder not found at "%LIVE_BASE%"
+    goto :eof
+)
+
+echo Installing StarStrings language pack into LIVE root...
+
+echo Copying data folder to LIVE root...
+xcopy "!LANG_PACK_ROOT!\data\*" "%LIVE_BASE%\data\" /E /H /C /I /Y >nul
+if errorlevel 1 (
+    echo Warning: Some data files may not have copied correctly.
+)
+
+if exist "%LIVE_BASE%\user.cfg" (
+    call :UpdateUserCfgLanguageLine "%LIVE_BASE%\user.cfg"
+) else if exist "!LANG_PACK_ROOT!\user.cfg" (
+    copy /Y "!LANG_PACK_ROOT!\user.cfg" "%LIVE_BASE%\user.cfg" >nul
+) else (
+    echo Warning: user.cfg not found in extracted language pack.
+)
+
+echo Language pack installation completed.
+goto :eof
+
+:UpdateUserCfgLanguageLine
+PowerShell -NoProfile -Command "$file = Get-Item -LiteralPath '%~1'; $lines = Get-Content -LiteralPath $file; if(-not ($lines -match '^[\s]*g_language[\s]*=')) { Add-Content -LiteralPath $file -Value 'g_language = english' }"
+if errorlevel 1 (
+    echo Warning: Failed to update existing user.cfg with language setting.
+)
+goto :eof
+
+:CleanupLanguagePackTemp
+if exist "!LANG_PACK_ZIP!" del /Q "!LANG_PACK_ZIP!"
+if exist "!LANG_PACK_TEMP!" rmdir /S /Q "!LANG_PACK_TEMP!"
+goto :eof

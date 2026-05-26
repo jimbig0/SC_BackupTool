@@ -17,6 +17,7 @@ FEATURES:
   • Automatic detection of installed Star Citizen branch versions
   • Organized backup directory structure for easy management
   • Create HOTFIX symbolic link to LIVE folder for alternative branch access
+  • Download and install StarStrings language pack directly from GitHub
   • Continuous menu loop - perform multiple operations without restarting
   • Enhanced error handling with clear user feedback
 
@@ -77,11 +78,19 @@ SETUP INSTRUCTIONS:
       • LIVE folder must exist in Star Citizen installation
       • HOTFIX folder must not exist or must be empty
       
-   Option 4 - Exit
-      Closes the utility and exits to desktop
-
-BACKUP LOCATION:
-   Backups are automatically stored in:
+   Option 4 - Download and install StarStrings language pack
+      Downloads the latest StarStrings release from GitHub and installs it into LIVE.
+      
+      How it works:
+      • Fetches the latest release ZIP from https://github.com/MrKraken/StarStrings/releases/latest
+      • Extracts the ZIP to a temporary folder
+      • Copies the contained data folder into the LIVE root folder
+      • Preserves an existing LIVE user.cfg if present
+      • If user.cfg exists, appends g_language = english if needed
+      • If user.cfg does not exist, copies the package user.cfg into LIVE
+      
+   Option 5 - Exit
+   Example: 2026_04_19_Alpha_4.0.0
    %USERPROFILE%\Documents\SC_Config_Backups\
 
    Folder structure: YYYY_MM_DD_BranchVersion

@@ -1,4 +1,4 @@
-Star Citizen Utility - Backup & Restore Tool
+## Star Citizen Utility - Backup & Restore Tool
 A comprehensive backup and restore utility for Star Citizen game configurations. It safely backs up your user settings, control keybindings, and character data across the different Star Citizen branches (LIVE, PTU, and TECH-PREVIEW). This is especially useful when transferring configurations between game branches or safeguarding your settings.
 
 Two scripts provide identical functionality, one for each platform:

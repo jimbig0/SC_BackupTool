@@ -7,37 +7,37 @@ Two scripts provide identical functionality, one for each platform:
 Windows	StarCitizen_UserConfig_Backup.bat  
 Linux	StarCitizen_UserConfig_Backup.sh (LUG launcher / Wine prefix)  
 # Features  
-Automatic backup of user profiles and control settings  
-Restore functionality with backup selection and destination choice  
-Support for multiple Star Citizen branches (LIVE, PTU, TECH-PREVIEW)  
-Fixed restore menu options: 1 (LIVE), 2 (PTU), 3 (TECH-PREVIEW)  
-Timestamped backups organized by date and game version  
-Automatic detection of installed Star Citizen branch versions  
-Organized backup directory structure for easy management  
-Create HOTFIX symbolic link to LIVE folder for alternative branch access  
-Download and install StarStrings language pack directly from GitHub  
-Continuous menu loop - perform multiple operations without restarting  
-Enhanced error handling with clear user feedback  
-Cross-platform backup compatibility - backups can be shared between Windows and Linux installs  
+- Automatic backup of user profiles and control settings  
+- Restore functionality with backup selection and destination choice  
+- Support for multiple Star Citizen branches (LIVE, PTU, TECH-PREVIEW)  
+- Fixed restore menu options: 1 (LIVE), 2 (PTU), 3 (TECH-PREVIEW)  
+- Timestamped backups organized by date and game version  
+- Automatic detection of installed Star Citizen branch versions  
+- Organized backup directory structure for easy management  
+- Create HOTFIX symbolic link to LIVE folder for alternative branch access  
+- Download and install StarStrings language pack directly from GitHub  
+- Continuous menu loop - perform multiple operations without restarting  
+- Enhanced error handling with clear user feedback  
+- Cross-platform backup compatibility - backups can be shared between Windows and Linux installs  
 ## Requirements
-# Windows
+### Windows
 CAUTION Administrator privileges (required to access Star Citizen installation files)
-Star Citizen installed at: C:\Program Files\Roberts Space Industries\StarCitizen
-# Linux
+Star Citizen installed at: C:\Program Files\Roberts Space Industries\StarCitizen  
+### Linux
 bash, zip, unzip, curl, python3
 On CachyOS / Arch: sudo pacman -S zip unzip curl python
 No administrator privileges required - everything runs inside your user's Wine prefix
 Star Citizen installed via the LUG Helper (default prefix: ~/Games/star-citizen)  
 ## Setup Instructions - Windows
 Place the batch file Copy StarCitizen_UserConfig_Backup.bat to your Documents folder.
-Create a desktop shortcut
-Right-click the batch file → Send to → Desktop (create shortcut)
-Right-click the shortcut → Properties
-Go to the Shortcut tab → Advanced button
-Check "Run as administrator"
-Click OK to save changes
-Important - read before running This script requires administrative privileges to access Star Citizen program files. Please review the code within the batch file to ensure you are comfortable with its operations before granting administrator access.
-Run the utility Double-click the shortcut to launch the main menu. After completing any operation, you'll be returned to the main menu to perform additional actions.
+Create a desktop shortcut  
+Right-click the batch file → Send to → Desktop (create shortcut)  
+Right-click the shortcut → Properties  
+Go to the Shortcut tab → Advanced button  
+Check "Run as administrator"  
+Click OK to save changes  
+**Important - read before running This script requires administrative privileges to access Star Citizen program files. Please review the code within the batch file to ensure you are comfortable with its operations before granting administrator access.**
+Run the utility Double-click the shortcut to launch the main menu. After completing any operation, you'll be returned to the main menu to perform additional actions.  
 ## Setup Instructions - Linux
 Place the script Copy StarCitizen_UserConfig_Backup.sh anywhere convenient (e.g. your Documents folder).
 Make it executable chmod +x StarCitizen_UserConfig_Backup.sh

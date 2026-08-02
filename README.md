@@ -3,32 +3,32 @@ A comprehensive backup and restore utility for Star Citizen game configurations.
 
 Two scripts provide identical functionality, one for each platform:
 
-Platform	Script
-Windows	StarCitizen_UserConfig_Backup.bat
-Linux	StarCitizen_UserConfig_Backup.sh (LUG launcher / Wine prefix)
-Features
-Automatic backup of user profiles and control settings
-Restore functionality with backup selection and destination choice
-Support for multiple Star Citizen branches (LIVE, PTU, TECH-PREVIEW)
-Fixed restore menu options: 1 (LIVE), 2 (PTU), 3 (TECH-PREVIEW)
-Timestamped backups organized by date and game version
-Automatic detection of installed Star Citizen branch versions
-Organized backup directory structure for easy management
-Create HOTFIX symbolic link to LIVE folder for alternative branch access
-Download and install StarStrings language pack directly from GitHub
-Continuous menu loop - perform multiple operations without restarting
-Enhanced error handling with clear user feedback
-Cross-platform backup compatibility - backups can be shared between Windows and Linux installs
-Requirements
-Windows
-Administrator privileges (required to access Star Citizen installation files)
+# Platform	Script
+Windows	StarCitizen_UserConfig_Backup.bat  
+Linux	StarCitizen_UserConfig_Backup.sh (LUG launcher / Wine prefix)  
+# Features  
+Automatic backup of user profiles and control settings  
+Restore functionality with backup selection and destination choice  
+Support for multiple Star Citizen branches (LIVE, PTU, TECH-PREVIEW)  
+Fixed restore menu options: 1 (LIVE), 2 (PTU), 3 (TECH-PREVIEW)  
+Timestamped backups organized by date and game version  
+Automatic detection of installed Star Citizen branch versions  
+Organized backup directory structure for easy management  
+Create HOTFIX symbolic link to LIVE folder for alternative branch access  
+Download and install StarStrings language pack directly from GitHub  
+Continuous menu loop - perform multiple operations without restarting  
+Enhanced error handling with clear user feedback  
+Cross-platform backup compatibility - backups can be shared between Windows and Linux installs  
+## Requirements
+# Windows
+CAUTION Administrator privileges (required to access Star Citizen installation files)
 Star Citizen installed at: C:\Program Files\Roberts Space Industries\StarCitizen
-Linux
+# Linux
 bash, zip, unzip, curl, python3
 On CachyOS / Arch: sudo pacman -S zip unzip curl python
 No administrator privileges required - everything runs inside your user's Wine prefix
-Star Citizen installed via the LUG Helper (default prefix: ~/Games/star-citizen)
-Setup Instructions - Windows
+Star Citizen installed via the LUG Helper (default prefix: ~/Games/star-citizen)  
+## Setup Instructions - Windows
 Place the batch file Copy StarCitizen_UserConfig_Backup.bat to your Documents folder.
 Create a desktop shortcut
 Right-click the batch file → Send to → Desktop (create shortcut)
@@ -38,18 +38,18 @@ Check "Run as administrator"
 Click OK to save changes
 Important - read before running This script requires administrative privileges to access Star Citizen program files. Please review the code within the batch file to ensure you are comfortable with its operations before granting administrator access.
 Run the utility Double-click the shortcut to launch the main menu. After completing any operation, you'll be returned to the main menu to perform additional actions.
-Setup Instructions - Linux
+## Setup Instructions - Linux
 Place the script Copy StarCitizen_UserConfig_Backup.sh anywhere convenient (e.g. your Documents folder).
 Make it executable chmod +x StarCitizen_UserConfig_Backup.sh
 Adjust the installation path (only if needed) The script targets the default LUG Helper prefix: ~/Games/star-citizen/drive_c/Program Files/Roberts Space Industries/StarCitizen
 If your Star Citizen installation lives elsewhere, override the paths when running:
 
-SC_BASE="/path/to/StarCitizen" BACKUP_ROOT="/path/to/backups" ./StarCitizen_UserConfig_Backup.sh
+SC_BASE="/path/to/StarCitizen" BACKUP_ROOT="/path/to/backups" ./StarCitizen_UserConfig_Backup.sh  
 Run the utility
-./StarCitizen_UserConfig_Backup.sh
-After completing any operation, you'll be returned to the main menu to perform additional actions.
+./StarCitizen_UserConfig_Backup.sh  
+After completing any operation, you'll be returned to the main menu to perform additional actions.  
 
-Main Menu Options
+# Main Menu Options
 Option 1 - Backup Configuration
 Backs up your current LIVE configuration to a timestamped compressed file.
 
@@ -82,7 +82,7 @@ HOTFIX folder must not exist or must be empty
 Option 4 - Download and install StarStrings language pack
 Downloads the latest StarStrings release from GitHub and installs it into LIVE.
 
-How it works:
+## How it works:
 
 Fetches the latest release ZIP from https://github.com/MrKraken/StarStrings/releases/latest
 Extracts the ZIP to a temporary folder

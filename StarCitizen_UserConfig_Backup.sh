@@ -3,6 +3,7 @@
 # Bash port of StarCitizen_UserConfig_Backup.bat
 # https://github.com/jimbig0/SC_BackupTool
 set -u
+set -o pipefail
 
 SC_BASE="${SC_BASE:-$HOME/Games/star-citizen/drive_c/Program Files/Roberts Space Industries/StarCitizen}"
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/Documents/SC_Config_Backups}"
@@ -28,6 +29,18 @@ LANG_PACK_TEMP=""
 LANG_PACK_ROOT=""
 LANG_PACK_DATA=""
 
+if find --help 2>&1 | grep -q -- '-printf'; then
+    HAS_GNU_FIND=1
+else
+    HAS_GNU_FIND=0
+fi
+
+cleanup() {
+    [[ -f "$LANG_PACK_ZIP" ]] && rm -f "$LANG_PACK_ZIP"
+    [[ -d "$LANG_PACK_TEMP" ]] && rm -rf "$LANG_PACK_TEMP"
+}
+trap cleanup EXIT
+
 check_dependencies() {
     local missing=0
     for cmd in zip unzip curl python3; do
@@ -39,8 +52,31 @@ check_dependencies() {
     if [[ $missing -eq 1 ]]; then
         echo "Please install missing dependencies, e.g. on CachyOS/Arch:"
         echo "  sudo pacman -S zip unzip curl python"
+        echo "Note: the 'python' package provides the python3 command, and"
+        echo "      'unzip' provides the zipinfo command used for zip checks."
+        echo "Optional: 'jq' (used for GitHub API queries if installed)."
         exit 1
     fi
+}
+
+safe_zip_check() {
+    local zipfile="$1"
+    if [[ ! -f "$zipfile" ]]; then
+        echo "Error: Zip file not found: \"$zipfile\""
+        return 1
+    fi
+    if ! command -v zipinfo >/dev/null 2>&1; then
+        echo "Error: zipinfo not available. Cannot verify zip contents safely."
+        return 1
+    fi
+    local entry
+    while IFS= read -r entry; do
+        if [[ "$entry" = /* ]] || [[ "$entry" == *".."* ]]; then
+            echo "Unsafe zip entry detected: $entry"
+            return 1
+        fi
+    done < <(zipinfo -1 "$zipfile")
+    return 0
 }
 
 initialize_date() {
@@ -50,12 +86,17 @@ initialize_date() {
 extract_branch_version() {
     BRANCH_VERSION="Unknown"
     if [[ -f "$MANIFEST_FILE" ]]; then
-        BRANCH_VERSION="$(grep -i '"Branch"' "$MANIFEST_FILE" | head -n 1 | cut -d: -f2)"
-        BRANCH_VERSION="${BRANCH_VERSION//\"/}"
-        BRANCH_VERSION="${BRANCH_VERSION// /}"
-        BRANCH_VERSION="${BRANCH_VERSION//$'\r'/}"
+        if command -v jq >/dev/null 2>&1; then
+            BRANCH_VERSION="$(jq -r '.Data.Branch // empty' "$MANIFEST_FILE" 2>/dev/null)"
+        fi
+        if [[ -z "$BRANCH_VERSION" ]]; then
+            BRANCH_VERSION="$(sed -n 's/.*"Branch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$MANIFEST_FILE" | head -n 1)"
+            BRANCH_VERSION="${BRANCH_VERSION//$'\r'/}"
+        fi
         BRANCH_VERSION="${BRANCH_VERSION//sc-alpha-/Alpha_}"
         BRANCH_VERSION="${BRANCH_VERSION%,}"
+        BRANCH_VERSION="$(printf '%s' "$BRANCH_VERSION" | tr -c 'A-Za-z0-9._-' '_')"
+        [[ -z "$BRANCH_VERSION" ]] && BRANCH_VERSION="Unknown"
     else
         echo "Warning: Manifest file not found. Using default version \"Unknown\""
     fi
@@ -120,7 +161,7 @@ perform_backup() {
 }
 
 compress_backup() {
-    BACKUP_ZIP="$BACKUP_DIR.zip"
+    BACKUP_ZIP="${BACKUP_DIR}.zip"
     [[ -f "$BACKUP_ZIP" ]] && rm -f "$BACKUP_ZIP"
 
     echo "Compressing backup to .zip file..."
@@ -134,6 +175,9 @@ compress_backup() {
         rm -rf "$BACKUP_DIR"
         echo "Compression completed successfully."
         echo "Backup file: \"$BACKUP_ZIP\""
+    else
+        echo "Error: Zip creation failed; backup directory preserved."
+        return 1
     fi
     return 0
 }
@@ -160,9 +204,15 @@ find_available_backups() {
     fi
 
     local backups=()
-    while IFS= read -r -d '' f; do
-        backups+=("$f")
-    done < <(find "$BACKUP_ROOT" -maxdepth 1 -name '*.zip' -print0 | sort -z)
+    if [[ "$HAS_GNU_FIND" -eq 1 ]]; then
+        while IFS= read -r -d '' f; do
+            backups+=("${f#* }")
+        done < <(find "$BACKUP_ROOT" -maxdepth 1 -type f -name '*.zip' -printf '%T@ %p\0' | sort -z -n -r)
+    else
+        while IFS= read -r -d '' f; do
+            backups+=("$f")
+        done < <(find "$BACKUP_ROOT" -maxdepth 1 -type f -name '*.zip' -print0)
+    fi
 
     local count="${#backups[@]}"
     if [[ $count -eq 0 ]]; then
@@ -304,6 +354,11 @@ confirm_and_execute_restore() {
 
 extract_backup() {
     echo "Extracting backup from: \"$BACKUP_ZIP\""
+    if ! safe_zip_check "$BACKUP_ZIP"; then
+        echo "Error: Refusing to extract unsafe backup archive."
+        read -r -p "Press Enter to continue..."
+        return 1
+    fi
     if ! unzip -o -q "$BACKUP_ZIP" -d "$RESTORE_PATH"; then
         echo "Error: Failed to extract backup file."
         read -r -p "Press Enter to continue..."
@@ -407,24 +462,35 @@ download_language_pack() {
     LANG_PACK_ZIP="${TMPDIR:-/tmp}/StarStrings_LanguagePack.zip"
     [[ -f "$LANG_PACK_ZIP" ]] && rm -f "$LANG_PACK_ZIP"
 
-    echo "Downloading latest StarStrings language pack from GitHub..."
-    local url
-    url="$(python3 - <<'EOF'
+    echo "Getting latest StarStrings release URL from GitHub..."
+    local url=""
+    if command -v jq >/dev/null 2>&1; then
+        url="$(curl -fsSL 'https://api.github.com/repos/MrKraken/StarStrings/releases/latest' \
+            | jq -r '.assets[] | select(.name | test("\\.zip$")) | .browser_download_url' 2>/dev/null \
+            | head -n 1)"
+    else
+        url="$(python3 - <<'PY' 2>/dev/null || true
 import json, urllib.request
-with urllib.request.urlopen('https://api.github.com/repos/MrKraken/StarStrings/releases/latest') as r:
-    data = json.load(r)
+try:
+    with urllib.request.urlopen('https://api.github.com/repos/MrKraken/StarStrings/releases/latest', timeout=30) as r:
+        data = json.load(r)
+except Exception:
+    raise SystemExit(1)
 for asset in data.get('assets', []):
     if asset.get('name', '').lower().endswith('.zip'):
         print(asset['browser_download_url'])
         break
-EOF
+PY
 )"
+    fi
+
     if [[ -z "$url" ]]; then
-        echo "Error: No zip asset found in latest StarStrings release."
+        echo "Error: Could not find a zip asset in latest release (API issue or rate-limited)."
         return 1
     fi
 
-    if ! curl -sL -o "$LANG_PACK_ZIP" "$url"; then
+    echo "Downloading latest StarStrings language pack from GitHub..."
+    if ! curl -fsSL -o "$LANG_PACK_ZIP" "$url"; then
         echo "Error: Failed to download language pack."
         return 1
     fi
@@ -437,6 +503,10 @@ extract_language_pack_zip() {
     mkdir -p "$LANG_PACK_TEMP"
 
     echo "Extracting language pack..."
+    if ! safe_zip_check "$LANG_PACK_ZIP"; then
+        echo "Error: Refusing to extract unsafe language pack archive."
+        return 1
+    fi
     if ! unzip -q "$LANG_PACK_ZIP" -d "$LANG_PACK_TEMP"; then
         echo "Error: Failed to extract language pack archive."
         return 1
@@ -474,16 +544,23 @@ install_language_pack_files() {
 
     echo "Installing StarStrings language pack into LIVE root..."
     echo "Copying data folder to LIVE root..."
+    mkdir -p "$LIVE_BASE/Data"
     if ! cp -a "$LANG_PACK_DATA/." "$LIVE_BASE/Data/"; then
         echo "Warning: Some data files may not have copied correctly."
     fi
 
-    if [[ -f "$LIVE_BASE/USER.cfg" ]]; then
-        update_usercfg_language "$LIVE_BASE/USER.cfg"
-    elif [[ -f "$LANG_PACK_ROOT/USER.cfg" ]]; then
-        cp -a "$LANG_PACK_ROOT/USER.cfg" "$LIVE_BASE/USER.cfg"
-    elif [[ -f "$LANG_PACK_ROOT/user.cfg" ]]; then
-        cp -a "$LANG_PACK_ROOT/user.cfg" "$LIVE_BASE/USER.cfg"
+    local live_cfg=""
+    [[ -f "$LIVE_BASE/USER.cfg" ]] && live_cfg="$LIVE_BASE/USER.cfg"
+    [[ -z "$live_cfg" && -f "$LIVE_BASE/user.cfg" ]] && live_cfg="$LIVE_BASE/user.cfg"
+
+    local pack_cfg=""
+    [[ -f "$LANG_PACK_ROOT/USER.cfg" ]] && pack_cfg="$LANG_PACK_ROOT/USER.cfg"
+    [[ -z "$pack_cfg" && -f "$LANG_PACK_ROOT/user.cfg" ]] && pack_cfg="$LANG_PACK_ROOT/user.cfg"
+
+    if [[ -n "$live_cfg" ]]; then
+        update_usercfg_language "$live_cfg"
+    elif [[ -n "$pack_cfg" ]]; then
+        cp -a "$pack_cfg" "$LIVE_BASE/USER.cfg"
     else
         echo "Warning: user.cfg not found in extracted language pack."
     fi

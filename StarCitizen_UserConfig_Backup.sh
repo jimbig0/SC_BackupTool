@@ -7,6 +7,7 @@ set -o pipefail
 
 SC_BASE="${SC_BASE:-$HOME/Games/star-citizen/drive_c/Program Files/Roberts Space Industries/StarCitizen}"
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/Documents/SC_Config_Backups}"
+LAUNCH_SCRIPT="${LAUNCH_SCRIPT:-$HOME/Games/star-citizen/sc-launch.sh}"
 
 LIVE_BASE="$SC_BASE/LIVE"
 PTU_BASE="$SC_BASE/PTU"
@@ -117,21 +118,23 @@ display_main_menu() {
     echo "2. Restore configuration"
     echo "3. Create HOTFIX symbolic link to LIVE"
     echo "4. Download and install StarStrings language pack"
-    echo "5. Exit"
+    echo "5. Toggle Easy Anti-Cheat (fast precompiling shader cache)"
+    echo "6. Exit"
     echo
 }
 
 main_menu() {
     while true; do
         display_main_menu
-        read -r -p "Enter 1, 2, 3, 4, or 5: " choice || exit 0
+        read -r -p "Enter 1, 2, 3, 4, 5, or 6: " choice || exit 0
         case "$choice" in
             1) perform_backup ;;
             2) perform_restore ;;
             3) create_hotfix_link ;;
             4) perform_language_pack_install ;;
-            5) echo "Exiting Star Citizen User Profile Config Manager."; exit 0 ;;
-            *) echo "Invalid choice. Please enter 1, 2, 3, 4, or 5." ;;
+            5) toggle_eac ;;
+            6) echo "Exiting Star Citizen User Profile Config Manager."; exit 0 ;;
+            *) echo "Invalid choice. Please enter 1, 2, 3, 4, 5, or 6." ;;
         esac
     done
 }
@@ -441,6 +444,71 @@ create_hotfix_link() {
     echo "Successfully created HOTFIX symbolic link!"
     echo "HOTFIX now points to LIVE folder."
     read -r -p "Press Enter to continue..."
+}
+
+toggle_eac() {
+    echo
+    echo "========================================="
+    echo "Easy Anti-Cheat Toggle (Fast shader cache)"
+    echo "========================================="
+    if [[ ! -f "$LAUNCH_SCRIPT" ]]; then
+        echo "Error: sc-launch.sh not found at: \"$LAUNCH_SCRIPT\""
+        echo "Override with the LAUNCH_SCRIPT environment variable if needed."
+        read -r -p "Press Enter to continue..."
+        return
+    fi
+
+    ensure_eac_lines
+
+    if grep -qE '^[[:space:]]*export[[:space:]]+EOS_USE_ANTICHEATCLIENTNULL=' "$LAUNCH_SCRIPT"; then
+        echo "Easy Anti-Cheat is currently BYPASSED (shader cache mode)."
+        echo "Make sure Star Citizen is CLOSED before changing this."
+        echo
+        read -r -p "Re-enable Easy Anti-Cheat now? [y/N] " ans
+        case "$ans" in
+            y|Y)
+                sed -i 's/^[[:space:]]*export[[:space:]]\+EOS_USE_ANTICHEATCLIENTNULL=/# export EOS_USE_ANTICHEATCLIENTNULL=/' "$LAUNCH_SCRIPT"
+                echo "Easy Anti-Cheat re-enabled (line commented back out)."
+                ;;
+            *) echo "No change made." ;;
+        esac
+    else
+        echo "Easy Anti-Cheat is currently ACTIVE (normal mode)."
+        echo "Bypassing EAC lets shaders compile much faster."
+        echo "IMPORTANT: Re-run this option to re-enable EAC after shader caching has completed."
+        echo "Do NOT try to connect to PU or Arena Commander untill EAC is re-enabled."
+        echo
+        read -r -p "Disable Easy Anti-Cheat for fast shader caching? [y/N] " ans
+        case "$ans" in
+            y|Y)
+                sed -i 's/^[[:space:]]*#[[:space:]]*export[[:space:]]\+EOS_USE_ANTICHEATCLIENTNULL=/export EOS_USE_ANTICHEATCLIENTNULL=/' "$LAUNCH_SCRIPT"
+                echo "Easy Anti-Cheat bypassed (line uncommented)."
+                echo "After shader caching, close the game and re-enable EAC."
+                ;;
+            *) echo "No change made." ;;
+        esac
+    fi
+    read -r -p "Press Enter to continue..."
+}
+
+ensure_eac_lines() {
+    if grep -qF 'EOS_USE_ANTICHEATCLIENTNULL' "$LAUNCH_SCRIPT"; then
+        return
+    fi
+    local tmp
+    tmp="$(mktemp)"
+    awk -v head='##### Comment out line below to enable EasyAnticheat Enable it again to allow for fast compiling of shaders' \
+        -v line='# export EOS_USE_ANTICHEATCLIENTNULL=1' '
+        /^# END ENVIRONMENT VARIABLES/ && !inserted {
+            print head
+            print line
+            print ""
+            inserted=1
+        }
+        { print }
+    ' "$LAUNCH_SCRIPT" > "$tmp"
+    mv "$tmp" "$LAUNCH_SCRIPT"
+    echo "Added Easy Anti-Cheat toggle lines to sc-launch.sh."
 }
 
 perform_language_pack_install() {

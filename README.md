@@ -19,6 +19,7 @@ Linux	StarCitizen_UserConfig_Backup.sh (LUG launcher / Wine prefix)
 - Continuous menu loop - perform multiple operations without restarting  
 - Enhanced error handling with clear user feedback  
 - Cross-platform backup compatibility - backups can be shared between Windows and Linux installs  
+- Old shader cache cleanup - safely removes stale `starcitizen_*` cache folders left by previous game builds  
 ## Requirements
 ### Windows
 CAUTION Administrator privileges (required to access Star Citizen installation files)
@@ -45,6 +46,9 @@ Adjust the installation path (only if needed) The script targets the default LUG
 If your Star Citizen installation lives elsewhere, override the paths when running:
 
 SC_BASE="/path/to/StarCitizen" BACKUP_ROOT="/path/to/backups" ./StarCitizen_UserConfig_Backup.sh  
+If your shader cache lives in a non-standard Wine prefix, override it too:
+
+SC_BASE="/path/to/StarCitizen" SHADER_CACHE_ROOT="/path/to/star citizen" ./StarCitizen_UserConfig_Backup.sh  
 Run the utility
 ./StarCitizen_UserConfig_Backup.sh  
 After completing any operation, you'll be returned to the main menu to perform additional actions.  
@@ -90,7 +94,40 @@ Copies the contained data folder into the LIVE root folder
 Preserves an existing LIVE USER.cfg if present
 If USER.cfg exists, appends g_language = english if needed
 If USER.cfg does not exist, copies the package's USER.cfg into LIVE
-Option 5 - Exit
+Option 5 - Troubleshooting
+Troubleshooting groups the shader cache maintenance tools and the Easy Anti-Cheat
+toggle (Linux) under one submenu.
+
+  1. Cleanup old shader cache folders - safe cleanup for builds no longer installed
+  2. Force delete shader cache (verified) - deletes any verified shader cache folder
+     regardless of installed build, forcing a full shader rebuild
+  3. Toggle Easy Anti-Cheat (Linux only) - fast shader cache precompilation
+  4. Return to main menu
+
+How safe cleanup works:
+
+Reads the installed branch version (e.g. sc-alpha-4.9.0) from the build_manifest.id
+of every installed environment (LIVE, PTU, TECH-PREVIEW)
+Scans the shader cache root for starcitizen_* folders and parses the version embedded
+in each folder name
+Keeps every folder that matches an installed build; only folders for builds that are
+no longer installed are offered for removal
+Always verifies the exact folder path and basename before deleting
+Requires an explicit selection and a typed YES confirmation before anything is removed
+
+How force delete works:
+
+Scans the shader cache root for starcitizen_* folders
+Verifies each folder is genuinely a shader cache: the name must match the
+starcitizen_* pattern with a build version, the path must live directly under the
+shader cache root, and it must contain recognized shader subfolders (shaders/,
+vulkanshadercache/, GraphicsSettings/)
+Every verified folder is offered for deletion - use this when you want the game to
+rebuild all shaders from scratch, e.g. to fix corruption or frame stutter
+Re-verifies the folder immediately before each deletion
+Requires an explicit selection and a typed YES confirmation before anything is removed
+
+Option 6 - Exit
 Backup Location & Structure
 Backups are stored as compressed .zip files and organized by date and game version.
 
